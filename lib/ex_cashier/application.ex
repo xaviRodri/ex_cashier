@@ -10,6 +10,8 @@ defmodule ExCashier.Application do
     children = [
       # Starts a worker by calling: ExCashier.Worker.start_link(arg)
       # {ExCashier.Worker, arg}
+      {DynamicSupervisor, strategy: :one_for_one, name: ExCashier.UserCartSupervisor},
+      {Registry, keys: :unique, name: ExCashier.UserCartRegistry}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
