@@ -6,7 +6,7 @@ defmodule ExCashier.UserCartTest do
 
   @valid_user_identifier "1234abcd"
   @invalid_user_identifier %{user: "identifier"}
-  @valid_item_identifier "item1"
+  @valid_item_identifier "GR1"
   @invalid_item_identifier [item: 1]
 
   describe "create/1" do
@@ -28,25 +28,21 @@ defmodule ExCashier.UserCartTest do
   end
 
   describe "add/3" do
-    setup :clean_up_carts
+    setup :create_and_cleanup
 
     test "Adds an item to the user's cart if the user exists and the item is valid" do
-      {:ok, _pid} = UserCart.create(@valid_user_identifier)
       assert :ok = UserCart.add(@valid_user_identifier, @valid_item_identifier)
 
       assert %{@valid_item_identifier => %{quantity: 1}} = UserCart.get(@valid_user_identifier)
     end
 
     test "Adds an specified qty of an item to the user's cart if the user exists and the item is valid" do
-      {:ok, _pid} = UserCart.create(@valid_user_identifier)
       assert :ok = UserCart.add(@valid_user_identifier, @valid_item_identifier, 3)
 
       assert %{@valid_item_identifier => %{quantity: 3}} = UserCart.get(@valid_user_identifier)
     end
 
     test "Adds more of the same items to the current cart when they previously exists in it" do
-      {:ok, _pid} = UserCart.create(@valid_user_identifier)
-
       :ok = UserCart.add(@valid_user_identifier, @valid_item_identifier)
 
       assert %{@valid_item_identifier => %{quantity: 1}} = UserCart.get(@valid_user_identifier)
@@ -57,7 +53,11 @@ defmodule ExCashier.UserCartTest do
     end
 
     test "Fails to add an item if the cart does not exist" do
-      assert {:error, :not_found} = UserCart.add(@valid_user_identifier, @valid_item_identifier)
+      assert {:error, :not_found} = UserCart.add("non_registered_user", @valid_item_identifier)
+    end
+
+    test "Fails to add an item if the item does not exist" do
+      assert {:error, :item_not_found} = UserCart.add(@valid_user_identifier, "not_exists")
     end
 
     test "Fails to add an item if any of ther parameters is not valid" do
@@ -67,15 +67,13 @@ defmodule ExCashier.UserCartTest do
   end
 
   describe "get/1" do
-    setup :clean_up_carts
+    setup :create_and_cleanup
 
     test "Returns an empty cart from a new valid user" do
-      {:ok, _pid} = UserCart.create(@valid_user_identifier)
       assert %{} = UserCart.get(@valid_user_identifier)
     end
 
     test "Returns a non-empty cart from a valid user" do
-      {:ok, _pid} = UserCart.create(@valid_user_identifier)
       assert :ok = UserCart.add(@valid_user_identifier, @valid_item_identifier)
 
       assert %{@valid_item_identifier => %{quantity: 1}} = UserCart.get(@valid_user_identifier)
@@ -84,6 +82,11 @@ defmodule ExCashier.UserCartTest do
     test "Returns an error if the user identifier is not valid" do
       assert :error = UserCart.get(@invalid_user_identifier)
     end
+  end
+
+  defp create_and_cleanup(_) do
+    {:ok, pid} = ExCashier.create_user_cart(@valid_user_identifier)
+    on_exit(fn -> DynamicSupervisor.terminate_child(ExCashier.UserCartSupervisor, pid) end)
   end
 
   defp clean_up_carts(_) do

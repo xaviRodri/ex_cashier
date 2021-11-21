@@ -24,8 +24,15 @@ defmodule ExCashier.Catalogue do
   Returns an item from the item catalogue given its identifier.
   """
   @spec get(binary()) :: {binary(), map()} | nil
-  def get(item_identifier),
-    do: GenServer.call(__MODULE__, {:get_item, item_identifier})
+  def get(item_identifier), do: GenServer.call(__MODULE__, {:get_item, item_identifier})
+
+  @doc """
+  Returns true if the item exists in the catalogue.
+
+  Otherwise, it returns false.
+  """
+  @spec exist?(binary()) :: boolean()
+  def exist?(item_identifier), do: GenServer.call(__MODULE__, {:exist?, item_identifier})
 
   ###########
   ## SERVER
@@ -66,6 +73,9 @@ defmodule ExCashier.Catalogue do
 
   def handle_call(:get_all, _from, items_table),
     do: {:reply, :ets.tab2list(items_table), items_table}
+
+  def handle_call({:exist?, item_identifier}, _from, items_table),
+    do: {:reply, not Enum.empty?(:ets.lookup(items_table, item_identifier)), items_table}
 
   defp insert_item({item_identifier, item_attrs}, items_table) do
     :ets.insert(items_table, {item_identifier, item_attrs})

@@ -51,10 +51,14 @@ defmodule ExCashier.UserCart do
   def add(user_identifier, item_identifier, qty)
       when is_binary(user_identifier) and is_binary(item_identifier) and is_integer(qty) and
              qty > 0 do
-    case lookup_user_cart(user_identifier) do
-      {:ok, pid} ->
-        Logger.info("Added #{qty} item(s) #{item_identifier} to user #{user_identifier}.")
-        GenServer.cast(pid, {:add_item, item_identifier, qty})
+    with true <- ExCashier.Catalogue.exist?(item_identifier),
+         {:ok, pid} <- lookup_user_cart(user_identifier) do
+      Logger.debug("Added #{qty} item(s) #{item_identifier} to user #{user_identifier}.")
+      GenServer.cast(pid, {:add_item, item_identifier, qty})
+    else
+      false ->
+        Logger.error("Item #{item_identifier} not found in the catalogue.")
+        {:error, :item_not_found}
 
       {:error, :not_found} ->
         Logger.error("User #{user_identifier} not found.")
