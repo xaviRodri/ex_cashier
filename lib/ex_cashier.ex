@@ -6,74 +6,31 @@ defmodule ExCashier do
   """
   require Logger
 
-  alias ExCashier.{UserCart, UserCartRegistry, UserCartSupervisor}
+  alias ExCashier.{Checkout, UserCart}
 
   @doc """
-  Starts a new user cart process and registers it to the user cart registry.
+  Creates a new user cart process and registers it to the user cart registry.
   """
-  @spec start_user_cart(binary()) :: {:ok, pid()} | {:error, {:already_started, pid()}} | :error
-  def start_user_cart(user_identifier) when is_binary(user_identifier) do
-    registry_name = {:via, Registry, {UserCartRegistry, user_identifier}}
-
-    DynamicSupervisor.start_child(UserCartSupervisor, {UserCart, name: registry_name})
-  end
-
-  def start_user_cart(_user_identifier) do
-    Logger.error("User identifiers must be strings")
-    :error
-  end
+  @spec create_user_cart(binary()) :: {:ok, pid()} | {:error, {:already_started, pid()}} | :error
+  def create_user_cart(user_identifier), do: UserCart.create(user_identifier)
 
   @doc """
-  Adds an item to the user's cart.
+  Adds an item to a user's cart.
   """
   @spec add_item(binary(), binary(), pos_integer()) :: :ok | {:error, :not_found} | :error
-  def add_item(user_identifier, item_identifier, qty \\ 1)
-
-  def add_item(user_identifier, item_identifier, qty)
-      when is_binary(user_identifier) and is_binary(item_identifier) and is_integer(qty) and
-             qty > 0 do
-    case lookup_user_cart(user_identifier) do
-      {:ok, pid} ->
-        Logger.info("Added #{qty} item(s) #{item_identifier} to user #{user_identifier}.")
-        GenServer.cast(pid, {:add_item, item_identifier, qty})
-
-      {:error, :not_found} ->
-        Logger.error("User #{user_identifier} not found.")
-        {:error, :not_found}
-    end
-  end
-
-  def add_item(_user_identifier, _item_identifier, _qty) do
-    Logger.error(
-      "User and item identifiers must be strings, and quantity must be a positive integer"
-    )
-
-    :error
-  end
+  def add_item(user_identifier, item_identifier, quantity \\ 1),
+    do: UserCart.add(user_identifier, item_identifier, quantity)
 
   @doc """
   Returns a user's cart.
   """
   @spec get_user_cart(binary()) ::
           %{user_id: binary(), items: map()} | {:error, :not_found} | :error
-  def get_user_cart(user_identifier) when is_binary(user_identifier) do
-    case lookup_user_cart(user_identifier) do
-      {:ok, pid} -> GenServer.call(pid, :get_cart)
-      {:error, :not_found} -> {:error, :not_found}
-    end
-  end
+  def get_user_cart(user_identifier), do: UserCart.get(user_identifier)
 
-  def get_user_cart(_user_identifier) do
-    Logger.error("User and item identifiers must be strings")
-    :error
-  end
-
-  # Returns the PID of a user's cart.
-  @spec lookup_user_cart(binary()) :: {:ok, pid()} | {:error, :not_found} | :error
-  defp lookup_user_cart(user_identifier) when is_binary(user_identifier) do
-    case Registry.lookup(ExCashier.UserCartRegistry, user_identifier) do
-      [{pid, _}] -> {:ok, pid}
-      _ -> {:error, :not_found}
-    end
-  end
+  @doc """
+  Returns the amount a user has to pay for its cart.
+  """
+  @spec checkout(binary()) :: {:ok, float()} | :error
+  def checkout(user_identifier), do: Checkout.start(user_identifier)
 end
