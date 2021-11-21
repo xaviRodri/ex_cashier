@@ -22,4 +22,14 @@ defmodule ExCashier.CatalogueTest do
       assert Catalogue.get(@nonexisting_item) == nil
     end
   end
+
+  describe "exist/1" do
+    test "Returns `true` if the item entered exists in the catalogue" do
+      assert Catalogue.exist?("GR1")
+    end
+
+    test "Returns `false` if the item entered does not exists in the catalogue" do
+      refute Catalogue.exist?("not_exists")
+    end
+  end
 end

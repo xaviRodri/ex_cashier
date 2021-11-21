@@ -1,5 +1,5 @@
 defmodule ExCashier.CheckoutTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias ExCashier.{Checkout, UserCart}
   # This will hide logs in the console when testing
   @moduletag :capture_log
@@ -7,11 +7,14 @@ defmodule ExCashier.CheckoutTest do
   @valid_user_identifier "1234abcd"
   @invalid_user_identifier %{invalid: "identifier"}
   @item_identifier "GR1"
+
   describe "start/1" do
-    setup :clean_up_carts
+    setup do
+      {:ok, pid} = ExCashier.create_user_cart(@valid_user_identifier)
+      on_exit(fn -> terminate_children(pid) end)
+    end
 
     test "Returns the total checkout price given a cart" do
-      {:ok, _pid} = UserCart.create(@valid_user_identifier)
       :ok = UserCart.add(@valid_user_identifier, @item_identifier)
 
       assert {:ok, 3.11} = ExCashier.Checkout.start(@valid_user_identifier)
@@ -20,7 +23,6 @@ defmodule ExCashier.CheckoutTest do
     test "Returns a total price containing discounts if some of the items has one" do
       # Will take an item with a `2x1` discount for this test
 
-      {:ok, _pid} = UserCart.create(@valid_user_identifier)
       :ok = UserCart.add(@valid_user_identifier, @item_identifier, 2)
 
       assert {:ok, 3.11} = Checkout.start(@valid_user_identifier)
@@ -31,13 +33,6 @@ defmodule ExCashier.CheckoutTest do
     end
   end
 
-  defp clean_up_carts(_) do
-    on_exit(fn ->
-      DynamicSupervisor.which_children(ExCashier.UserCartSupervisor)
-      |> Enum.map(&terminate_children(&1))
-    end)
-  end
-
-  defp terminate_children({_, pid, :worker, [ExCashier.UserCart]}),
+  defp terminate_children(pid),
     do: DynamicSupervisor.terminate_child(ExCashier.UserCartSupervisor, pid)
 end
