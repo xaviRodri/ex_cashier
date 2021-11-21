@@ -26,13 +26,16 @@ defmodule ExCashier do
   @doc """
   Adds an item to the user's cart.
   """
-  @spec add_item(binary(), binary()) :: :ok | {:error, :not_found} | :error
-  def add_item(user_identifier, item_identifier)
-      when is_binary(user_identifier) and is_binary(item_identifier) do
+  @spec add_item(binary(), binary(), pos_integer()) :: :ok | {:error, :not_found} | :error
+  def add_item(user_identifier, item_identifier, qty \\ 1)
+
+  def add_item(user_identifier, item_identifier, qty)
+      when is_binary(user_identifier) and is_binary(item_identifier) and is_integer(qty) and
+             qty > 0 do
     case lookup_user_cart(user_identifier) do
       {:ok, pid} ->
-        Logger.info("Added item #{item_identifier} to user #{user_identifier}.")
-        GenServer.cast(pid, {:add_item, item_identifier})
+        Logger.info("Added #{qty} item(s) #{item_identifier} to user #{user_identifier}.")
+        GenServer.cast(pid, {:add_item, item_identifier, qty})
 
       {:error, :not_found} ->
         Logger.error("User #{user_identifier} not found.")
@@ -40,8 +43,11 @@ defmodule ExCashier do
     end
   end
 
-  def add_item(_user_identifier, _item_identifier) do
-    Logger.error("User and item identifiers must be strings")
+  def add_item(_user_identifier, _item_identifier, _qty) do
+    Logger.error(
+      "User and item identifiers must be strings, and quantity must be a positive integer"
+    )
+
     :error
   end
 
@@ -69,10 +75,5 @@ defmodule ExCashier do
       [{pid, _}] -> {:ok, pid}
       _ -> {:error, :not_found}
     end
-  end
-
-  defp lookup_user_cart(_user_identifier) do
-    Logger.error("User identifiers must be strings")
-    :error
   end
 end

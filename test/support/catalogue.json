@@ -1,0 +1,5 @@
+{
+    "GR1": {"name": "Green tea", "price": 3.11, "discounts": [{"type": "2x1"}]},
+    "SR1": {"name": "Strawberries", "price": 5.00, "discounts": [{"type": "drop_price", "min_qty": 3, "mod_type": "price", "mod": 4.50}]},
+    "CF1": {"name": "Coffee", "price": 11.23, "discounts": [{"type": "drop_price", "min_qty": 3, "mod_type": "%", "mod": 66.66}]}
+}
