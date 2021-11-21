@@ -26,7 +26,7 @@ defmodule ExCashierTest do
     end
   end
 
-  describe "add_item/2" do
+  describe "add_item/3" do
     setup :clean_up_carts
 
     test "Adds an item to the user's cart if the user exists and the item is valid" do
@@ -34,6 +34,28 @@ defmodule ExCashierTest do
       assert :ok = ExCashier.add_item(@valid_user_identifier, @valid_item_identifier)
 
       assert %{@valid_item_identifier => %{quantity: 1}} =
+               ExCashier.get_user_cart(@valid_user_identifier)
+    end
+
+    test "Adds an specified qty of an item to the user's cart if the user exists and the item is valid" do
+      {:ok, _pid} = ExCashier.start_user_cart(@valid_user_identifier)
+      assert :ok = ExCashier.add_item(@valid_user_identifier, @valid_item_identifier, 3)
+
+      assert %{@valid_item_identifier => %{quantity: 3}} =
+               ExCashier.get_user_cart(@valid_user_identifier)
+    end
+
+    test "Adds more of the same items to the current cart when they previously exists in it" do
+      {:ok, _pid} = ExCashier.start_user_cart(@valid_user_identifier)
+
+      :ok = ExCashier.add_item(@valid_user_identifier, @valid_item_identifier)
+
+      assert %{@valid_item_identifier => %{quantity: 1}} =
+               ExCashier.get_user_cart(@valid_user_identifier)
+
+      :ok = ExCashier.add_item(@valid_user_identifier, @valid_item_identifier, 3)
+
+      assert %{@valid_item_identifier => %{quantity: 4}} =
                ExCashier.get_user_cart(@valid_user_identifier)
     end
 
