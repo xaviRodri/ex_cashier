@@ -159,7 +159,6 @@ defmodule ExCashier.UserCart do
   defp remove_item(items_map, item_id, qty) do
     case Map.get(items_map, item_id) do
       nil ->
-        IO.inspect("HEY")
         Logger.error("Item #{item_id} not present in the cart. Can not remove it.")
         items_map
 
