@@ -163,12 +163,15 @@ defmodule ExCashier.UserCart do
         items_map
 
       %{quantity: _prev_qty} when qty == :all ->
+        Logger.debug("Removed item #{item_id} from the cart.")
         Map.delete(items_map, item_id)
 
       %{quantity: prev_qty} when qty >= prev_qty ->
+        Logger.debug("Removed item #{item_id} from the cart.")
         Map.delete(items_map, item_id)
 
       %{quantity: prev_qty} = item when qty < prev_qty ->
+        Logger.debug("Removed #{qty} item(s) #{item_id} from the cart.")
         Map.put(items_map, item_id, %{item | quantity: prev_qty - qty})
     end
   end
