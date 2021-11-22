@@ -22,6 +22,14 @@ defmodule ExCashier do
     do: UserCart.add(user_identifier, item_identifier, quantity)
 
   @doc """
+  Removes a quantity of an item from a user's cart.
+
+  This quantity can be also `:all`, to remove the entire item from the cart.
+  """
+  def remove_item(user_identifier, item_identifier, quantity \\ 1),
+    do: UserCart.remove(user_identifier, item_identifier, quantity)
+
+  @doc """
   Returns a user's cart.
   """
   @spec get_user_cart(binary()) ::
