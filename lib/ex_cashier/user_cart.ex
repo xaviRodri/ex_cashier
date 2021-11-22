@@ -74,6 +74,38 @@ defmodule ExCashier.UserCart do
     :error
   end
 
+  @doc """
+  Removes an item or reduces its quantity from the user's cart.
+  """
+  @spec remove(binary(), binary(), pos_integer() | :all) :: :ok | {:error, :not_found} | :error
+  def remove(user_identifier, item_identifier, qty \\ 1)
+
+  def remove(user_identifier, item_identifier, qty)
+      when is_binary(user_identifier) and is_binary(item_identifier) and
+             (is_integer(qty) or qty == :all) and
+             qty > 0 do
+    with true <- ExCashier.Catalogue.exist?(item_identifier),
+         {:ok, pid} <- lookup_user_cart(user_identifier) do
+      GenServer.cast(pid, {:remove_item, item_identifier, qty})
+    else
+      false ->
+        Logger.error("Item #{item_identifier} not found in the catalogue.")
+        {:error, :item_not_found}
+
+      {:error, :not_found} ->
+        Logger.error("User #{user_identifier} not found.")
+        {:error, :not_found}
+    end
+  end
+
+  def remove(_user_identifier, _item_identifier, _qty) do
+    Logger.error(
+      "User and item identifiers must be strings, and quantity must be a positive integer or the atom `:all`"
+    )
+
+    :error
+  end
+
   # Returns the PID of a user's cart.
   @spec lookup_user_cart(binary()) :: {:ok, pid()} | {:error, :not_found}
   defp lookup_user_cart(user_identifier) do
@@ -106,6 +138,11 @@ defmodule ExCashier.UserCart do
     {:noreply, %{state | items: add_item(state.items, item_id, qty)}}
   end
 
+  @impl true
+  def handle_cast({:remove_item, item_id, qty}, state) do
+    {:noreply, %{state | items: remove_item(state.items, item_id, qty)}}
+  end
+
   # Adds an new item to the current item list (with quantity 1)
   # or updates the current quantity of it (sums 1)
   defp add_item(items_map, new_item, qty) do
@@ -115,6 +152,25 @@ defmodule ExCashier.UserCart do
 
       %{quantity: prev_qty} = item ->
         Map.put(items_map, new_item, %{item | quantity: prev_qty + qty})
+    end
+  end
+
+  # Removes an item or reduces its quantity from the current item list
+  defp remove_item(items_map, item_id, qty) do
+    case Map.get(items_map, item_id) do
+      nil ->
+        IO.inspect("HEY")
+        Logger.error("Item #{item_id} not present in the cart. Can not remove it.")
+        items_map
+
+      %{quantity: _prev_qty} when qty == :all ->
+        Map.delete(items_map, item_id)
+
+      %{quantity: prev_qty} when qty >= prev_qty ->
+        Map.delete(items_map, item_id)
+
+      %{quantity: prev_qty} = item when qty < prev_qty ->
+        Map.put(items_map, item_id, %{item | quantity: prev_qty - qty})
     end
   end
 end

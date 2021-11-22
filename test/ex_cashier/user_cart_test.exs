@@ -1,5 +1,7 @@
 defmodule ExCashier.UserCartTest do
   use ExUnit.Case, async: true
+  import ExUnit.CaptureLog
+  require Logger
   alias ExCashier.UserCart
   # This will hide logs in the console when testing
   @moduletag :capture_log
@@ -81,6 +83,84 @@ defmodule ExCashier.UserCartTest do
 
     test "Returns an error if the user identifier is not valid" do
       assert :error = UserCart.get(@invalid_user_identifier)
+    end
+  end
+
+  describe "remove/3" do
+    setup :create_and_cleanup
+
+    test "Removes only 1 instance of the item from the cart if no quantity is specified" do
+      :ok = UserCart.add(@valid_user_identifier, @valid_item_identifier, 2)
+
+      assert %{@valid_item_identifier => %{quantity: 2}} = UserCart.get(@valid_user_identifier)
+
+      :ok = UserCart.remove(@valid_user_identifier, @valid_item_identifier)
+
+      assert %{@valid_item_identifier => %{quantity: 1}} = UserCart.get(@valid_user_identifier)
+    end
+
+    test "Reduces the quantity of the item from the cart when quantity is specified" do
+      :ok = UserCart.add(@valid_user_identifier, @valid_item_identifier, 10)
+
+      assert %{@valid_item_identifier => %{quantity: 10}} = UserCart.get(@valid_user_identifier)
+
+      :ok = UserCart.remove(@valid_user_identifier, @valid_item_identifier, 5)
+
+      assert %{@valid_item_identifier => %{quantity: 5}} = UserCart.get(@valid_user_identifier)
+    end
+
+    test "Removes the item from the cart if the quantity specified is the same that the cart contains" do
+      :ok = UserCart.add(@valid_user_identifier, @valid_item_identifier, 2)
+
+      assert %{@valid_item_identifier => %{quantity: 2}} = UserCart.get(@valid_user_identifier)
+
+      :ok = UserCart.remove(@valid_user_identifier, @valid_item_identifier, 2)
+
+      assert %{} = UserCart.get(@valid_user_identifier)
+    end
+
+    test "Removes the item from the cart if the quantity specified is `:all`" do
+      :ok = UserCart.add(@valid_user_identifier, @valid_item_identifier, 10)
+
+      assert %{@valid_item_identifier => %{quantity: 10}} = UserCart.get(@valid_user_identifier)
+
+      :ok = UserCart.remove(@valid_user_identifier, @valid_item_identifier, :all)
+
+      assert %{} = UserCart.get(@valid_user_identifier)
+    end
+
+    test "The cart is not affected if the item tried to remove is not in it" do
+      assert :ok = UserCart.remove(@valid_user_identifier, @valid_item_identifier)
+      assert %{} = UserCart.get(@valid_user_identifier)
+    end
+
+    test "Returns an `:item_not_found` error when the item tried to remove is not in the catalogue" do
+      assert capture_log(fn ->
+               assert {:error, :item_not_found} =
+                        UserCart.remove(@valid_user_identifier, "not_exists")
+             end) =~ "not found in the catalogue"
+    end
+
+    test "Returns an error if the user is not registered" do
+      assert capture_log(fn ->
+               assert {:error, :not_found} =
+                        UserCart.remove("not_registered", @valid_item_identifier)
+             end) =~ "not found"
+    end
+
+    test "Returns an error if any of the parameters is not valid" do
+      assert capture_log(fn ->
+               assert :error = UserCart.remove(@invalid_user_identifier, @valid_item_identifier)
+             end) =~ "must be strings"
+
+      assert capture_log(fn ->
+               assert :error = UserCart.remove(@valid_user_identifier, @invalid_item_identifier)
+             end) =~ "must be strings"
+
+      assert capture_log(fn ->
+               assert :error =
+                        UserCart.remove(@valid_user_identifier, @valid_item_identifier, "a")
+             end) =~ "positive integer or the atom `:all`"
     end
   end
 
